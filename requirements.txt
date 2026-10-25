@@ -1,0 +1,28 @@
+# ==============================================================================
+# Upgraded Adaptive ECG Quality Assessment — Dependencies
+# ==============================================================================
+
+# Core Numerical & Signal Processing
+numpy>=1.24.0
+scipy>=1.10.0
+pandas>=2.0.0
+wfdb>=4.1.0
+PyWavelets>=1.4.0
+
+# GPU Tensor Decomposition & Deep Learning
+torch>=2.0.0
+tensorly>=0.8.0
+
+# Machine Learning & Model Persistence
+scikit-learn>=1.2.0
+joblib>=1.2.0
+
+# FastAPI Production Backend
+fastapi>=0.100.0
+uvicorn[standard]>=0.23.0
+pydantic>=2.0.0
+
+# Interactive Frontend & Visualization
+streamlit>=1.25.0
+plotly>=5.15.0
+

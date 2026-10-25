@@ -1,0 +1,20 @@
+# Python Bytecode & Cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+
+# Virtual Environments
+.venv/
+venv/
+env/
+ENV/
+
+# OS-generated files & Logs
+.DS_Store
+Thumbs.db
+*.tmp
+*.log
+
+# Duplicate / redundant raw text exports (WFDB uses .hea/.dat)
+dataset/raw/set-a/*.txt

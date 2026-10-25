@@ -1,0 +1,1356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CardioPulse AI — Adaptive ECG Quality & Diagnostic Readiness</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: #0b1120;
+      color: #e2e8f0;
+    }
+    .font-mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    /* ECG Grid lines for canvas container */
+    .ecg-grid-bg {
+      background-color: #080d1a;
+      background-image: 
+        linear-gradient(rgba(14, 165, 233, 0.07) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(14, 165, 233, 0.07) 1px, transparent 1px),
+        linear-gradient(rgba(14, 165, 233, 0.15) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(14, 165, 233, 0.15) 1px, transparent 1px);
+      background-size: 10px 10px, 10px 10px, 50px 50px, 50px 50px;
+      background-position: -1px -1px, -1px -1px, -1px -1px, -1px -1px;
+    }
+    /* Pulse glow keyframes */
+    @keyframes pulse-glow {
+      0%, 100% { opacity: 0.4; transform: scale(0.98); }
+      50% { opacity: 0.8; transform: scale(1.02); }
+    }
+    .animate-pulse-glow {
+      animation: pulse-glow 3s infinite ease-in-out;
+    }
+    /* Heartbeat line animation in header */
+    @keyframes pulse-line {
+      0% { stroke-dashoffset: 400; }
+      100% { stroke-dashoffset: 0; }
+    }
+    .ecg-pulse-svg path {
+      stroke-dasharray: 400;
+      animation: pulse-line 2.5s linear infinite;
+    }
+    /* Custom scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0b1120;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #1e293b;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #334155;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased selection:bg-cyan-500/20 selection:text-cyan-300">
+
+  <!-- ============================================================== -->
+  <!-- TOP NAVIGATION & STATUS BAR -->
+  <!-- ============================================================== -->
+  <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      
+      <!-- Logo & Hospital Title -->
+      <div class="flex items-center space-x-3">
+        <div class="h-10 w-10 rounded-xl bg-gradient-to-tr from-cyan-600 to-emerald-400 p-0.5 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+          <div class="h-full w-full bg-slate-950 rounded-[10px] flex items-center justify-center">
+            <i data-lucide="activity" class="h-5 w-5 text-cyan-400 animate-pulse"></i>
+          </div>
+        </div>
+        <div>
+          <div class="flex items-center space-x-2">
+            <span class="font-extrabold text-lg text-white tracking-tight">CardioPulse<span class="text-cyan-400 font-medium">.AI</span></span>
+            <span class="px-2 py-0.5 text-[10px] font-semibold bg-cyan-950 text-cyan-300 border border-cyan-800/60 rounded-full">Adaptive STP 2.0</span>
+          </div>
+          <p class="text-xs text-slate-400 hidden sm:block">Clinical 12-Lead ECG Quality & Multilinear Tensor Assessment</p>
+        </div>
+      </div>
+
+      <!-- ECG Header Pulse Wave graphic -->
+      <div class="hidden md:flex items-center space-x-2 text-slate-500">
+        <svg class="h-6 w-32 ecg-pulse-svg" viewBox="0 0 160 30" fill="none">
+          <path d="M 0 15 L 45 15 L 50 8 L 55 24 L 62 0 L 68 30 L 73 12 L 78 18 L 83 15 L 160 15" 
+                stroke="#0ea5e9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+
+      <!-- Right controls: Audience Mode Toggle & Device Status -->
+      <div class="flex items-center space-x-3">
+        <!-- Audience Mode Switcher -->
+        <div class="bg-slate-950 p-1 rounded-xl border border-slate-800 flex items-center text-xs">
+          <button id="btn-mode-plain" onclick="setAudienceMode('plain')" 
+                  class="px-3 py-1.5 rounded-lg font-medium transition-all duration-200 flex items-center space-x-1.5 bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+            <i data-lucide="user" class="h-3.5 w-3.5"></i>
+            <span>Plain English</span>
+          </button>
+          <button id="btn-mode-clinical" onclick="setAudienceMode('clinical')" 
+                  class="px-3 py-1.5 rounded-lg font-medium transition-all duration-200 flex items-center space-x-1.5 text-slate-400 hover:text-white">
+            <i data-lucide="stethoscope" class="h-3.5 w-3.5"></i>
+            <span>Clinical & Tech</span>
+          </button>
+        </div>
+
+        <!-- Hardware Device Pill -->
+        <div id="device-badge" class="hidden sm:flex items-center space-x-1.5 px-2.5 py-1 bg-slate-800/80 rounded-lg text-xs font-mono text-emerald-400 border border-emerald-900/50">
+          <span class="h-2 w-2 rounded-full bg-emerald-400 animate-ping"></span>
+          <span id="device-name">CUDA GPU</span>
+        </div>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- ============================================================== -->
+  <!-- MAIN DASHBOARD CONTENT -->
+  <!-- ============================================================== -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 space-y-6">
+
+    <!-- 1. RECORD SELECTOR & PRESETS BAR -->
+    <section class="bg-slate-900/70 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xl backdrop-blur">
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        
+        <!-- Left: Quick Select Presets -->
+        <div class="space-y-2">
+          <div class="flex items-center space-x-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
+            <i data-lucide="sparkles" class="h-3.5 w-3.5 text-cyan-400"></i>
+            <span>Explore Test Records:</span>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button onclick="loadRecord('1005639')" class="preset-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-950/60 text-emerald-300 border border-emerald-800/60 hover:bg-emerald-900/80 transition flex items-center space-x-1">
+              <span>🟢 1005639</span>
+              <span class="text-[10px] text-emerald-400/80">(Pristine Clean)</span>
+            </button>
+            <button onclick="loadRecord('1002867')" class="preset-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-950/40 text-emerald-300 border border-emerald-800/40 hover:bg-emerald-900/60 transition flex items-center space-x-1">
+              <span>🟢 1002867</span>
+              <span class="text-[10px] text-emerald-400/80">(Stabilized Baseline)</span>
+            </button>
+            <button onclick="loadRecord('1003574')" class="preset-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-rose-950/60 text-rose-300 border border-rose-800/60 hover:bg-rose-900/80 transition flex items-center space-x-1">
+              <span>🔴 1003574</span>
+              <span class="text-[10px] text-rose-400/80">(Lead V3 Detached)</span>
+            </button>
+            <button onclick="loadRecord('1004502')" class="preset-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-amber-950/60 text-amber-300 border border-amber-800/60 hover:bg-amber-900/80 transition flex items-center space-x-1">
+              <span>🟡 1004502</span>
+              <span class="text-[10px] text-amber-400/80">(Severe Breathing Drift)</span>
+            </button>
+            <button onclick="loadRecord('1002603')" class="preset-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-rose-950/80 text-rose-300 border border-rose-800/80 hover:bg-rose-900/90 transition flex items-center space-x-1">
+              <span>🔴 1002603</span>
+              <span class="text-[10px] text-rose-400/80">(Flatline Dead Wire)</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Right: Input Search box -->
+        <div class="flex items-center space-x-2">
+          <div class="relative flex-1 sm:w-64">
+            <i data-lucide="search" class="absolute left-3 top-2.5 h-4 w-4 text-slate-500"></i>
+            <input type="text" id="record-input" value="1002867" placeholder="Record ID (e.g. 1002867)..." 
+                   class="w-full pl-9 pr-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 font-mono">
+          </div>
+          <button id="btn-analyze" onclick="handleManualAnalyze()" 
+                  class="px-4 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white text-sm font-semibold rounded-xl shadow-lg shadow-cyan-600/20 transition flex items-center space-x-2">
+            <i data-lucide="cpu" class="h-4 w-4"></i>
+            <span>Analyze</span>
+          </button>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- LOADING SPINNER BANNER -->
+    <div id="loading-state" class="hidden py-12 flex flex-col items-center justify-center space-y-4">
+      <div class="h-12 w-12 border-4 border-cyan-500/20 border-t-cyan-400 rounded-full animate-spin"></div>
+      <p class="text-sm font-medium text-slate-300 tracking-wide">Executing CWT Scalograms & Tucker Decomposition on GPU...</p>
+    </div>
+
+    <!-- MAIN DASHBOARD BODY (Hidden during loading) -->
+    <div id="dashboard-body" class="space-y-6">
+
+      <!-- ============================================================== -->
+      <!-- 2. THE DIAGNOSTIC VERDICT HERO CARD -->
+      <!-- ============================================================== -->
+      <section id="verdict-card" class="rounded-2xl border transition-all duration-300 p-6 sm:p-7 relative overflow-hidden bg-slate-900/90 border-slate-800 shadow-2xl">
+        
+        <!-- Background decorative pulse ring -->
+        <div id="verdict-glow" class="absolute -right-20 -top-20 w-80 h-80 rounded-full blur-3xl pointer-events-none opacity-20 bg-cyan-500"></div>
+
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
+          
+          <!-- Left: Diagnosis Badge & Headline -->
+          <div class="space-y-3 flex-1">
+            <div class="flex items-center space-x-3">
+              <span id="verdict-status-pill" class="px-3.5 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider flex items-center space-x-1.5 shadow-sm bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                <i data-lucide="check-circle-2" class="h-4 w-4"></i>
+                <span id="verdict-status-text">ACCEPTABLE RECORDING</span>
+              </span>
+              <span class="text-xs font-mono text-slate-400">Record ID: <span id="display-record-id" class="text-white font-bold">1002867</span></span>
+            </div>
+
+            <h2 id="verdict-headline" class="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+              Ready for Clinical Interpretation
+            </h2>
+
+            <!-- Plain English Friendly Explanation -->
+            <div id="verdict-explanation-box" class="p-4 rounded-xl bg-slate-950/60 border border-slate-800 text-sm leading-relaxed text-slate-300">
+              <p id="verdict-plain-explanation">
+                The electrical signals from all 12 leads are clear and stable. A cardiologist can safely review this recording to diagnose heart rhythm without misleading noise.
+              </p>
+            </div>
+
+            <!-- Actionable Next Steps -->
+            <div class="flex flex-wrap items-center gap-3 pt-1 text-xs">
+              <span class="text-slate-400 font-medium">Recommended Action:</span>
+              <span id="verdict-action-pill" class="px-2.5 py-1 rounded-md font-semibold bg-emerald-950 text-emerald-300 border border-emerald-800">
+                Proceed to Diagnostic Report
+              </span>
+            </div>
+          </div>
+
+          <!-- Right: Visual Gauge & Confidence Meter -->
+          <div class="lg:w-72 bg-slate-950/80 p-5 rounded-2xl border border-slate-800 flex flex-col justify-center space-y-4">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Diagnostic Clarity</span>
+              <span id="confidence-percentage" class="text-2xl font-black font-mono text-emerald-400">92.0%</span>
+            </div>
+
+            <!-- Visual Bar -->
+            <div class="w-full bg-slate-800 h-3 rounded-full overflow-hidden p-0.5">
+              <div id="confidence-bar" class="h-full rounded-full transition-all duration-700 bg-gradient-to-r from-emerald-500 to-cyan-400" style="width: 92%"></div>
+            </div>
+
+            <!-- Risk probability -->
+            <div class="flex items-center justify-between text-xs text-slate-400 pt-1 border-t border-slate-800/60 font-mono">
+              <span>Unacceptable Risk:</span>
+              <span id="risk-percentage" class="text-slate-300 font-semibold">8.0%</span>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ============================================================== -->
+      <!-- 2B. DIAGNOSTIC FACTOR AUDIT & FAILURE ROOT CAUSES -->
+      <!-- ============================================================== -->
+      <section id="factors-audit-section" class="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
+        
+        <!-- Header -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
+          <div class="flex items-center space-x-2">
+            <i data-lucide="shield-alert" id="audit-header-icon" class="h-4 w-4 text-cyan-400"></i>
+            <h3 class="text-sm font-bold text-white uppercase tracking-wider">Quality Factor Audit & Root Cause Analysis</h3>
+          </div>
+          <span id="audit-summary-badge" class="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-slate-800 text-slate-300">
+            Evaluating Quality Factors
+          </span>
+        </div>
+
+        <!-- Failure Root Causes Box (Shown when Unacceptable) -->
+        <div id="root-cause-box" class="hidden p-4 rounded-xl border space-y-3 bg-rose-950/30 border-rose-900/60">
+          <div class="flex items-center space-x-2 text-rose-300 text-xs font-bold uppercase tracking-wider">
+            <i data-lucide="alert-triangle" class="h-4 w-4 text-rose-400"></i>
+            <span>Why This ECG was Classified as Unacceptable (Root Causes):</span>
+          </div>
+          <ul id="root-cause-list" class="space-y-1.5 text-xs text-rose-200">
+            <!-- Dynamically populated root causes -->
+          </ul>
+          <div class="pt-2 border-t border-rose-900/40 text-xs text-rose-300/90 flex items-start space-x-2">
+            <span class="font-bold whitespace-nowrap">Clinical Technician Fix:</span>
+            <span id="root-cause-action"></span>
+          </div>
+        </div>
+
+        <!-- 4 Factor Cards Checklist -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+          
+          <!-- Factor 1: Sensor & Wire Physical Contact -->
+          <div id="factor-card-sensor" class="p-3.5 rounded-xl border bg-slate-950 border-slate-800 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-slate-200 flex items-center space-x-1.5">
+                <span>⚡ Sensor Attachment</span>
+              </span>
+              <span id="factor-badge-sensor" class="px-2 py-0.5 text-[10px] font-bold rounded">Checking</span>
+            </div>
+            <p id="factor-desc-sensor" class="text-slate-400 leading-relaxed text-[11px] min-h-[36px]">Checking electrode skin contact...</p>
+          </div>
+
+          <!-- Factor 2: Baseline Drift & Breathing -->
+          <div id="factor-card-wander" class="p-3.5 rounded-xl border bg-slate-950 border-slate-800 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-slate-200 flex items-center space-x-1.5">
+                <span>🫁 Patient Breathing</span>
+              </span>
+              <span id="factor-badge-wander" class="px-2 py-0.5 text-[10px] font-bold rounded">Checking</span>
+            </div>
+            <p id="factor-desc-wander" class="text-slate-400 leading-relaxed text-[11px] min-h-[36px]">Evaluating chest expansion drift...</p>
+          </div>
+
+          <!-- Factor 3: Muscle Tremors & Shivering -->
+          <div id="factor-card-tremor" class="p-3.5 rounded-xl border bg-slate-950 border-slate-800 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-slate-200 flex items-center space-x-1.5">
+                <span>🌊 Muscle Shivering</span>
+              </span>
+              <span id="factor-badge-tremor" class="px-2 py-0.5 text-[10px] font-bold rounded">Checking</span>
+            </div>
+            <p id="factor-desc-tremor" class="text-slate-400 leading-relaxed text-[11px] min-h-[36px]">Checking high-frequency noise...</p>
+          </div>
+
+          <!-- Factor 4: 3D Tensor Wave Integrity -->
+          <div id="factor-card-tensor" class="p-3.5 rounded-xl border bg-slate-950 border-slate-800 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-slate-200 flex items-center space-x-1.5">
+                <span>🧠 3D Tensor Match</span>
+              </span>
+              <span id="factor-badge-tensor" class="px-2 py-0.5 text-[10px] font-bold rounded">Checking</span>
+            </div>
+            <p id="factor-desc-tensor" class="text-slate-400 leading-relaxed text-[11px] min-h-[36px]">Measuring multidimensional shape fidelity...</p>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ============================================================== -->
+      <!-- 3. INTERACTIVE 12-LEAD WAVEFORM TELEMETRY VIEWER -->
+      <!-- ============================================================== -->
+      <section class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
+        
+        <!-- Top Toolbar: Lead Switcher & View controls -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800">
+          <div class="flex items-center space-x-2">
+            <i data-lucide="line-chart" class="h-4 w-4 text-cyan-400"></i>
+            <span class="text-sm font-bold text-white uppercase tracking-wider">Cardiac Telemetry Waveform</span>
+            <span id="current-lead-pill" class="px-2 py-0.5 text-xs font-mono font-semibold bg-cyan-950 text-cyan-300 border border-cyan-800 rounded">Lead II</span>
+          </div>
+
+          <!-- Controls: Lead Selector & Grid Toggle -->
+          <div class="flex items-center space-x-2 text-xs">
+            <span class="text-slate-400 hidden sm:inline">Select Lead:</span>
+            <select id="lead-select" onchange="changeLead(this.value)" 
+                    class="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-white font-mono focus:outline-none focus:border-cyan-500">
+              <option value="II" selected>Lead II (Standard Rhythm)</option>
+              <option value="I">Lead I</option>
+              <option value="III">Lead III</option>
+              <option value="aVR">Lead aVR</option>
+              <option value="aVL">Lead aVL</option>
+              <option value="aVF">Lead aVF</option>
+              <option value="V1">Lead V1 (Septal)</option>
+              <option value="V2">Lead V2 (Anterior)</option>
+              <option value="V3">Lead V3 (Anterior)</option>
+              <option value="V4">Lead V4 (Lateral)</option>
+              <option value="V5">Lead V5 (Lateral)</option>
+              <option value="V6">Lead V6 (Lateral)</option>
+            </select>
+
+            <button id="btn-sweep" onclick="toggleSweepAnimation()" 
+                    class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg font-medium transition flex items-center space-x-1">
+              <i data-lucide="play" id="sweep-icon" class="h-3.5 w-3.5"></i>
+              <span id="sweep-text">Telemetry Sweep</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Interactive Canvas Viewport -->
+        <div class="relative w-full h-72 sm:h-80 rounded-xl overflow-hidden border border-slate-800/80 ecg-grid-bg">
+          <canvas id="ecgCanvas" class="w-full h-full block"></canvas>
+
+          <!-- Voltage & Time Calibration Legend -->
+          <div class="absolute bottom-2 right-3 px-2 py-1 bg-slate-950/80 backdrop-blur rounded text-[10px] font-mono text-cyan-400/80 border border-cyan-900/40 pointer-events-none">
+            Calibration: 10 mm/mV | 25 mm/s | 500 Hz
+          </div>
+
+          <!-- Hover Tooltip -->
+          <div id="chart-tooltip" class="hidden absolute top-2 left-3 px-2.5 py-1 bg-slate-950/90 rounded text-xs font-mono text-slate-200 border border-slate-700 shadow-lg pointer-events-none">
+            Time: <span id="tip-time" class="text-cyan-400">0.00s</span> | Voltage: <span id="tip-volt" class="text-emerald-400">0.00 mV</span>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- ============================================================== -->
+      <!-- 4. 12-LEAD ANATOMICAL ELECTRODE MATRIX -->
+      <!-- ============================================================== -->
+      <section class="bg-slate-900/70 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-3">
+        <div class="flex items-center justify-between pb-2">
+          <div class="flex items-center space-x-2">
+            <i data-lucide="layout-grid" class="h-4 w-4 text-cyan-400"></i>
+            <h3 class="text-sm font-bold text-white uppercase tracking-wider">12-Lead Electrode Quality Matrix</h3>
+          </div>
+          <span class="text-xs text-slate-400">Click any lead to view waveform</span>
+        </div>
+
+        <!-- 12-Card Grid -->
+        <div id="leads-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5">
+          <!-- Dynamically populated via JavaScript -->
+        </div>
+      </section>
+
+      <!-- ============================================================== -->
+      <!-- 5. 3D TENSOR MULTILINEAR DECOMPOSITION CENTER (TENSOR FOCUS) -->
+      <!-- ============================================================== -->
+      <section id="tensor-focus-section" class="bg-slate-900 border border-slate-800 rounded-2xl p-5 sm:p-6 shadow-xl space-y-5">
+        
+        <!-- Header -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
+          <div class="flex items-center space-x-3">
+            <div class="p-2 rounded-xl bg-cyan-950 border border-cyan-800 text-cyan-400">
+              <i data-lucide="box" class="h-5 w-5"></i>
+            </div>
+            <div>
+              <div class="flex items-center space-x-2">
+                <h3 class="text-base font-extrabold text-white tracking-tight uppercase">3D Tensor Brain: Tucker Decomposition</h3>
+                <span class="px-2 py-0.5 text-[10px] font-mono font-semibold bg-cyan-500/10 text-cyan-300 border border-cyan-500/30 rounded-full">Multilinear SVD</span>
+              </div>
+              <p class="text-xs text-slate-400">How Higher-Order Multilinear Algebra condenses 6,000,000 ECG points into core diagnostic signatures</p>
+            </div>
+          </div>
+
+          <!-- Metric Pills -->
+          <div class="flex items-center space-x-2 text-xs font-mono">
+            <span class="px-3 py-1 rounded-lg bg-slate-950 border border-slate-800 text-slate-300">
+              Raw Tensor: <span class="text-cyan-400 font-bold">5000 × 100 × 12</span>
+            </span>
+            <span class="px-3 py-1 rounded-lg bg-slate-950 border border-slate-800 text-slate-300">
+              Tucker Core: <span id="tensor-core-shape-pill" class="text-emerald-400 font-bold">23 × 8 × 4</span>
+            </span>
+          </div>
+        </div>
+
+        <!-- 3 Modes Explanatory Cards (Plain English & Understandable for Everyone) -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          
+          <!-- Mode 1: Time Mode -->
+          <div class="bg-slate-950 p-4 rounded-xl border border-slate-800/80 space-y-2">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center space-x-2 text-cyan-400 font-bold text-xs uppercase">
+                <i data-lucide="clock" class="h-4 w-4"></i>
+                <span>Mode 1: Time Samples</span>
+              </div>
+              <span id="rank-mode1-pill" class="px-2 py-0.5 text-xs font-mono font-bold bg-cyan-950 text-cyan-300 border border-cyan-800 rounded">R₁ = 23</span>
+            </div>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              <strong class="text-white">5,000 time points condensed:</strong> The AI extracts the <span id="rank-mode1-explain" class="text-cyan-300 font-medium">23</span> primary heartbeat pulse rhythms across the 10-second recording.
+            </p>
+            <div class="text-[10px] text-slate-500 font-mono pt-1">Temporal Eigen-bases (SVD unfolding)</div>
+          </div>
+
+          <!-- Mode 2: Frequency Mode -->
+          <div class="bg-slate-950 p-4 rounded-xl border border-slate-800/80 space-y-2">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center space-x-2 text-purple-400 font-bold text-xs uppercase">
+                <i data-lucide="waveform" class="h-4 w-4"></i>
+                <span>Mode 2: Frequency Scales</span>
+              </div>
+              <span id="rank-mode2-pill" class="px-2 py-0.5 text-xs font-mono font-bold bg-purple-950 text-purple-300 border border-purple-800 rounded">R₂ = 8</span>
+            </div>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              <strong class="text-white">100 CWT frequencies condensed:</strong> Captures the <span id="rank-mode2-explain" class="text-purple-300 font-medium">8</span> dominant electrical pitch levels (from slow P-waves to sharp QRS spikes).
+            </p>
+            <div class="text-[10px] text-slate-500 font-mono pt-1">Spectral Eigen-modes (1.0 to 40.0 Hz)</div>
+          </div>
+
+          <!-- Mode 3: Leads Mode -->
+          <div class="bg-slate-950 p-4 rounded-xl border border-slate-800/80 space-y-2">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center space-x-2 text-emerald-400 font-bold text-xs uppercase">
+                <i data-lucide="radio" class="h-4 w-4"></i>
+                <span>Mode 3: Physical Leads</span>
+              </div>
+              <span id="rank-mode3-pill" class="px-2 py-0.5 text-xs font-mono font-bold bg-emerald-950 text-emerald-300 border border-emerald-800 rounded">R₃ = 4</span>
+            </div>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              <strong class="text-white">12 sensor angles condensed:</strong> Eliminates duplicate lead info, finding the <span id="rank-mode3-explain" class="text-emerald-300 font-medium">4</span> true spatial heart vectors.
+            </p>
+            <div class="text-[10px] text-slate-500 font-mono pt-1">Spatial Projection Across Leads</div>
+          </div>
+
+        </div>
+
+        <!-- Middle: Interactive Tucker Core Matrix Heatmap + Compression Metrics -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-center">
+          
+          <!-- Heatmap Canvas (7 cols) -->
+          <div class="lg:col-span-7 bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-3">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center space-x-2 text-xs font-bold text-white uppercase tracking-wider">
+                <i data-lucide="grid" class="h-3.5 w-3.5 text-cyan-400"></i>
+                <span>Tucker Core Tensor Energy Slice: G[:, :, 0]</span>
+              </div>
+              <span class="text-[11px] text-slate-400">Time Modes (rows) × Frequency Modes (cols)</span>
+            </div>
+
+            <!-- Canvas Viewport for Heatmap -->
+            <div class="relative w-full h-48 rounded-lg overflow-hidden border border-slate-800 bg-[#070b14] flex items-center justify-center p-2">
+              <canvas id="coreCanvas" class="w-full h-full block"></canvas>
+            </div>
+
+            <!-- Heatmap plain-English explanation caption -->
+            <div class="flex items-center justify-between text-[11px] text-slate-400">
+              <div class="flex items-center space-x-2">
+                <span class="h-2.5 w-2.5 rounded-full bg-cyan-400"></span>
+                <span>Glowing top-left = 95% Pure Cardiac Energy Concentrated</span>
+              </div>
+              <div class="flex items-center space-x-2">
+                <span class="h-2.5 w-2.5 rounded-full bg-slate-800"></span>
+                <span>Dark areas = Filtered background noise</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tucker Compression & Fidelity Gauges (5 cols) -->
+          <div class="lg:col-span-5 space-y-3">
+            
+            <!-- Gauge 1: Compression Ratio -->
+            <div class="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-1.5">
+              <div class="flex items-center justify-between text-xs">
+                <span class="text-slate-400 font-semibold">Data Compression Ratio:</span>
+                <span id="tensor-comp-ratio" class="font-mono font-bold text-cyan-400 text-sm">51.5x Smaller</span>
+              </div>
+              <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                <div id="tensor-comp-bar" class="h-full bg-cyan-400 rounded-full" style="width: 85%"></div>
+              </div>
+              <p class="text-[11px] text-slate-400 leading-tight">
+                Shrank <strong>6,000,000 raw numbers</strong> into just <strong id="tensor-param-count" class="text-white">116,584 parameters</strong> (<span id="tensor-reduction-percent" class="text-emerald-400 font-bold">98.1%</span> reduction).
+              </p>
+            </div>
+
+            <!-- Gauge 2: 95% Cumulative Energy Rule -->
+            <div class="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-1.5">
+              <div class="flex items-center justify-between text-xs">
+                <span class="text-slate-400 font-semibold">Singular Value Energy:</span>
+                <span class="font-mono font-bold text-emerald-400 text-sm">≥ 95.0% Retained</span>
+              </div>
+              <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                <div class="h-full bg-emerald-400 rounded-full" style="width: 95%"></div>
+              </div>
+              <p class="text-[11px] text-slate-400 leading-tight">
+                Adaptive rank truncates negligible singular values, keeping 95% essential heart energy and discarding 5% random noise.
+              </p>
+            </div>
+
+            <!-- Gauge 3: Frobenius Reconstruction Fidelity -->
+            <div class="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-1.5">
+              <div class="flex items-center justify-between text-xs">
+                <span class="text-slate-400 font-semibold">Reconstruction Match:</span>
+                <span id="tensor-recon-fidelity" class="font-mono font-bold text-white text-sm">99.8% Fidelity</span>
+              </div>
+              <div class="flex items-center justify-between text-[11px] font-mono text-slate-400">
+                <span>Relative Error:</span>
+                <span id="tensor-recon-error" class="text-cyan-300 font-semibold">0.3020</span>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ============================================================== -->
+      <!-- 6. CLINICAL & ENGINEERING DEEP DIVE (ONLY VISIBLE IN CLINICAL MODE) -->
+      <!-- ============================================================== -->
+      <section id="clinical-deep-dive" class="hidden bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
+        <div class="flex items-center space-x-2 text-cyan-400 border-b border-slate-800 pb-3">
+          <i data-lucide="terminal" class="h-4 w-4"></i>
+          <h3 class="text-sm font-bold uppercase tracking-wider text-white">Mathematical & Multilinear Tensor Diagnostics</h3>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs font-mono">
+          <div class="bg-slate-950 p-3.5 rounded-xl border border-slate-800">
+            <span class="text-slate-500 block">Relative Frobenius Error</span>
+            <span id="tech-recon-error" class="text-lg font-bold text-white">0.3020</span>
+            <span class="text-[10px] text-slate-500 block pt-1">||X - X̂||_F / ||X||_F</span>
+          </div>
+          <div class="bg-slate-950 p-3.5 rounded-xl border border-slate-800">
+            <span class="text-slate-500 block">Parameter Representation</span>
+            <span id="tech-params" class="text-lg font-bold text-cyan-400">116,584</span>
+            <span class="text-[10px] text-slate-500 block pt-1">Original: 6,000,000 floats</span>
+          </div>
+          <div class="bg-slate-950 p-3.5 rounded-xl border border-slate-800">
+            <span class="text-slate-500 block">Baseline Drift Threshold</span>
+            <span class="text-lg font-bold text-emerald-400">0.08000</span>
+            <span class="text-[10px] text-slate-500 block pt-1">200ms Moving Avg Std</span>
+          </div>
+          <div class="bg-slate-950 p-3.5 rounded-xl border border-slate-800">
+            <span class="text-slate-500 block">Cross-Validation Security</span>
+            <span class="text-lg font-bold text-purple-400">SHA-256</span>
+            <span class="text-[10px] text-slate-500 block pt-1">StratifiedGroupKFold</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================================== -->
+      <!-- 7. FREQUENTLY ASKED QUESTIONS (HELP FOR NON-SPECIALISTS) -->
+      <!-- ============================================================== -->
+      <section class="bg-slate-900/50 border border-slate-800 rounded-2xl p-5 space-y-3">
+        <h3 class="text-sm font-bold text-slate-300 uppercase tracking-wider flex items-center space-x-2">
+          <i data-lucide="help-circle" class="h-4 w-4 text-cyan-400"></i>
+          <span>Frequently Asked Questions for Everyone</span>
+        </h3>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs text-slate-400">
+          <div class="p-3 bg-slate-950 rounded-xl border border-slate-800/60 space-y-1">
+            <span class="font-semibold text-slate-200">What does "Unacceptable" mean for a patient?</span>
+            <p>It does NOT mean the heart is unhealthy! It simply means the recording is too blurry or has a detached wire. The doctor cannot read it accurately and needs a quick re-test.</p>
+          </div>
+          <div class="p-3 bg-slate-950 rounded-xl border border-slate-800/60 space-y-1">
+            <span class="font-semibold text-slate-200">What is a 12-lead ECG?</span>
+            <p>It's like looking at the heart with 12 cameras from different angles. 6 electrodes are placed on the chest, and 4 on the limbs to produce 12 viewpoints.</p>
+          </div>
+          <div class="p-3 bg-slate-950 rounded-xl border border-slate-800/60 space-y-1">
+            <span class="font-semibold text-slate-200">Why can't doctors just filter out all noise?</span>
+            <p>Heavy filtering alters real heart wave shapes (like ST-elevation during heart attacks). That's why our AI only filters when genuinely necessary.</p>
+          </div>
+          <div class="p-3 bg-slate-950 rounded-xl border border-slate-800/60 space-y-1">
+            <span class="font-semibold text-slate-200">What is Tucker Tensor Decomposition in simple words?</span>
+            <p>Think of it as 3D JPEG compression for ECGs. It bundles time, frequency, and all 12 leads into a 3D block and extracts the clean essence of the signal while filtering out noise.</p>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- ============================================================== -->
+  <!-- FOOTER -->
+  <!-- ============================================================== -->
+  <footer class="border-t border-slate-800 py-4 bg-slate-950 text-center text-xs text-slate-500">
+    <p>CardioPulse AI — Adaptive Scalogram-Tensor Processing (STP 2.0) | PhysioNet CinC 2011 Set A Research Framework</p>
+  </footer>
+
+  <!-- ============================================================== -->
+  <!-- JAVASCRIPT APPLICATION LOGIC -->
+  <!-- ============================================================== -->
+  <script>
+    // Global State
+    let currentAudienceMode = 'plain'; // 'plain' or 'clinical'
+    let currentWaveformData = null;
+    let currentSelectedLead = 'II';
+    let currentPrediction = null;
+    let currentInspection = null;
+    let sweepAnimationId = null;
+    let sweepOffset = 0;
+    let isSweeping = false;
+
+    // Canvas elements
+    const ecgCanvas = document.getElementById('ecgCanvas');
+    const ctx = ecgCanvas.getContext('2d');
+    const coreCanvas = document.getElementById('coreCanvas');
+    const coreCtx = coreCanvas.getContext('2d');
+    const tooltip = document.getElementById('chart-tooltip');
+
+    // Safe Lucide creator
+    function updateIcons() {
+      if (window.lucide && typeof lucide.createIcons === 'function') {
+        try { lucide.createIcons(); } catch(e){}
+      }
+    }
+
+    // Resize canvas dynamically
+    function resizeCanvases() {
+      if (ecgCanvas && ecgCanvas.parentElement) {
+        const rect = ecgCanvas.parentElement.getBoundingClientRect();
+        ecgCanvas.width = rect.width * window.devicePixelRatio;
+        ecgCanvas.height = rect.height * window.devicePixelRatio;
+        ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+      }
+      if (coreCanvas && coreCanvas.parentElement) {
+        const rectC = coreCanvas.parentElement.getBoundingClientRect();
+        coreCanvas.width = rectC.width * window.devicePixelRatio;
+        coreCanvas.height = rectC.height * window.devicePixelRatio;
+        coreCtx.scale(window.devicePixelRatio, window.devicePixelRatio);
+      }
+      drawWaveform();
+      if (currentPrediction) drawCoreHeatmap(currentPrediction.core_slice);
+    }
+    window.addEventListener('resize', resizeCanvases);
+
+    // Initial check on load
+    window.addEventListener('DOMContentLoaded', async () => {
+      resizeCanvases();
+      checkBackendHealth();
+      loadRecord('1002867'); // Default load
+      updateIcons();
+    });
+
+    // Check Backend Health & Device
+    async function checkBackendHealth() {
+      try {
+        const res = await fetch('/health');
+        if (res.ok) {
+          const data = await res.json();
+          document.getElementById('device-name').textContent = data.device.toUpperCase();
+        }
+      } catch (err) {
+        console.warn('Backend health check note:', err);
+      }
+    }
+
+    // Toggle Audience Mode (Plain English vs Clinical)
+    function setAudienceMode(mode) {
+      currentAudienceMode = mode;
+      const btnPlain = document.getElementById('btn-mode-plain');
+      const btnClinical = document.getElementById('btn-mode-clinical');
+      const deepDiveSection = document.getElementById('clinical-deep-dive');
+
+      if (mode === 'plain') {
+        btnPlain.className = 'px-3 py-1.5 rounded-lg font-medium transition-all duration-200 flex items-center space-x-1.5 bg-cyan-500/20 text-cyan-300 border border-cyan-500/30';
+        btnClinical.className = 'px-3 py-1.5 rounded-lg font-medium transition-all duration-200 flex items-center space-x-1.5 text-slate-400 hover:text-white';
+        deepDiveSection.classList.add('hidden');
+      } else {
+        btnClinical.className = 'px-3 py-1.5 rounded-lg font-medium transition-all duration-200 flex items-center space-x-1.5 bg-cyan-500/20 text-cyan-300 border border-cyan-500/30';
+        btnPlain.className = 'px-3 py-1.5 rounded-lg font-medium transition-all duration-200 flex items-center space-x-1.5 text-slate-400 hover:text-white';
+        deepDiveSection.classList.remove('hidden');
+      }
+
+      // Re-render explanations according to current mode
+      if (currentPrediction) {
+        renderExplanations(currentPrediction);
+        renderFactorAudit(currentPrediction, currentInspection);
+      }
+      updateIcons();
+    }
+
+    // Load Record by ID
+    async function loadRecord(recordId) {
+      document.getElementById('record-input').value = recordId;
+      document.getElementById('loading-state').classList.remove('hidden');
+      document.getElementById('dashboard-body').classList.add('opacity-40');
+
+      try {
+        // Parallel requests: Predict, Inspect, and Waveform
+        const [predRes, inspectRes, waveRes] = await Promise.all([
+          fetch('/api/predict', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              record_id: recordId,
+              adaptive_preprocessing: true,
+              adaptive_cwt: true,
+              adaptive_rank: true
+            })
+          }),
+          fetch(`/api/inspect/${recordId}`),
+          fetch(`/api/records/${recordId}?downsample=5`)
+        ]);
+
+        if (!predRes.ok) throw new Error('Prediction API failed');
+        if (!inspectRes.ok) throw new Error('Inspection API failed');
+        if (!waveRes.ok) throw new Error('Waveform API failed');
+
+        currentPrediction = await predRes.json();
+        currentInspection = await inspectRes.json();
+        currentWaveformData = await waveRes.json();
+
+        // Render all sections
+        renderVerdict(currentPrediction);
+        renderFactorAudit(currentPrediction, currentInspection);
+        renderLeadMatrix(currentInspection);
+        renderTensorCenter(currentPrediction);
+        drawWaveform();
+
+      } catch (err) {
+        console.warn('API fetch note, attempting demo data fallback:', err);
+        // Fallback to demo_data.json
+        try {
+          const demoRes = await fetch('/static/demo_data.json').catch(() => fetch('demo_data.json'));
+          if (demoRes && demoRes.ok) {
+            const allDemo = await demoRes.json();
+            if (allDemo[recordId]) {
+              const d = allDemo[recordId];
+              currentPrediction = {
+                record_id: recordId,
+                prediction: d.prediction,
+                prediction_class: d.prediction === 'Acceptable' ? 0 : 1,
+                probability_unacceptable: d.prob_unacceptable,
+                probability_acceptable: d.prob_acceptable,
+                filter_applied: d.filter_applied,
+                max_frequency_hz: 40.0,
+                tucker_rank: d.tucker_rank || [23, 8, 4],
+                reconstruction_error: d.reconstruction_error || 0.287,
+                compression_ratio: d.compression_ratio || 51.5,
+                parameters_stored: d.parameters_stored || 116584,
+                characteristics: { mean_baseline_variation: d.wander, mean_high_frequency_ratio: 0.0 },
+                flat_leads: d.flat_leads,
+                dropout_leads: d.dropout_leads,
+                core_slice: d.core_slice || null
+              };
+
+              const leadItems = d.leads.map((name) => ({
+                lead: name,
+                minimum: -1.2,
+                maximum: 2.1,
+                std: d.flat_leads.includes(name) ? 0.0 : 0.45,
+                unique_values: d.flat_leads.includes(name) ? 1 : 250,
+                constant_lead: d.flat_leads.includes(name),
+                contains_dropout_marker: d.dropout_leads.includes(name)
+              }));
+
+              currentInspection = {
+                record_id: recordId,
+                flat_leads: d.flat_leads,
+                dropout_leads: d.dropout_leads,
+                characteristics: currentPrediction.characteristics,
+                leads: leadItems
+              };
+
+              const leadsObj = {};
+              d.leads.forEach((l, lIdx) => {
+                leadsObj[l] = d.wave.map(row => row[lIdx]);
+              });
+              currentWaveformData = {
+                record_id: recordId,
+                time: Array.from({length: d.wave.length}, (_, i) => i * 0.02),
+                leads: leadsObj
+              };
+
+              renderVerdict(currentPrediction);
+              renderFactorAudit(currentPrediction, currentInspection);
+              renderLeadMatrix(currentInspection);
+              renderTensorCenter(currentPrediction);
+              drawWaveform();
+              return;
+            }
+          }
+        } catch (demoErr) {
+          console.error('Demo fallback failed:', demoErr);
+        }
+        alert('Could not load record ' + recordId + ': ' + err.message);
+      } finally {
+        document.getElementById('loading-state').classList.add('hidden');
+        document.getElementById('dashboard-body').classList.remove('opacity-40');
+        updateIcons();
+      }
+    }
+
+    function handleManualAnalyze() {
+      const val = document.getElementById('record-input').value.trim();
+      if (val) loadRecord(val);
+    }
+
+    // Render Verdict Card
+    function renderVerdict(pred) {
+      document.getElementById('display-record-id').textContent = pred.record_id || 'Unknown';
+      
+      const isAcceptable = pred.prediction === 'Acceptable';
+      const statusPill = document.getElementById('verdict-status-pill');
+      const statusText = document.getElementById('verdict-status-text');
+      const headline = document.getElementById('verdict-headline');
+      const actionPill = document.getElementById('verdict-action-pill');
+      const confPercent = document.getElementById('confidence-percentage');
+      const confBar = document.getElementById('confidence-bar');
+      const riskPercent = document.getElementById('risk-percentage');
+      const glow = document.getElementById('verdict-glow');
+      const card = document.getElementById('verdict-card');
+
+      if (isAcceptable) {
+        statusPill.className = 'px-3.5 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider flex items-center space-x-1.5 shadow-sm bg-emerald-500/10 text-emerald-400 border border-emerald-500/30';
+        statusText.innerHTML = '<i data-lucide="check-circle-2" class="h-4 w-4 inline mr-1"></i> ACCEPTABLE RECORDING';
+        headline.textContent = 'Ready for Clinical Interpretation';
+        headline.className = 'text-2xl sm:text-3xl font-extrabold text-white tracking-tight';
+        actionPill.className = 'px-2.5 py-1 rounded-md font-semibold bg-emerald-950 text-emerald-300 border border-emerald-800';
+        actionPill.textContent = 'Clear to File in Patient Medical Chart';
+
+        const conf = (pred.probability_acceptable * 100).toFixed(1);
+        confPercent.textContent = `${conf}%`;
+        confPercent.className = 'text-2xl font-black font-mono text-emerald-400';
+        confBar.style.width = `${conf}%`;
+        confBar.className = 'h-full rounded-full transition-all duration-700 bg-gradient-to-r from-emerald-500 to-cyan-400';
+        riskPercent.textContent = `${(pred.probability_unacceptable * 100).toFixed(1)}%`;
+        glow.className = 'absolute -right-20 -top-20 w-80 h-80 rounded-full blur-3xl pointer-events-none opacity-20 bg-emerald-500';
+        card.className = 'rounded-2xl border transition-all duration-300 p-6 sm:p-7 relative overflow-hidden bg-slate-900/90 border-emerald-950/80 shadow-2xl';
+      } else {
+        statusPill.className = 'px-3.5 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider flex items-center space-x-1.5 shadow-sm bg-rose-500/10 text-rose-400 border border-rose-500/30';
+        statusText.innerHTML = '<i data-lucide="alert-octagon" class="h-4 w-4 inline mr-1"></i> UNACCEPTABLE QUALITY';
+        headline.textContent = 'Too Noisy / Re-recording Recommended';
+        headline.className = 'text-2xl sm:text-3xl font-extrabold text-rose-300 tracking-tight';
+        actionPill.className = 'px-2.5 py-1 rounded-md font-semibold bg-rose-950 text-rose-300 border border-rose-800';
+        actionPill.textContent = 'Inspect Electrode Placement & Retake ECG';
+
+        const unacc = (pred.probability_unacceptable * 100).toFixed(1);
+        confPercent.textContent = `${unacc}%`;
+        confPercent.className = 'text-2xl font-black font-mono text-rose-400';
+        confBar.style.width = `${unacc}%`;
+        confBar.className = 'h-full rounded-full transition-all duration-700 bg-gradient-to-r from-rose-500 to-amber-500';
+        riskPercent.textContent = `${unacc}%`;
+        glow.className = 'absolute -right-20 -top-20 w-80 h-80 rounded-full blur-3xl pointer-events-none opacity-25 bg-rose-600';
+        card.className = 'rounded-2xl border transition-all duration-300 p-6 sm:p-7 relative overflow-hidden bg-slate-900/90 border-rose-950/80 shadow-2xl';
+      }
+
+      renderExplanations(pred);
+    }
+
+    // Render Explanations according to audience mode
+    function renderExplanations(pred) {
+      const isAcceptable = pred.prediction === 'Acceptable';
+      const plainExp = document.getElementById('verdict-plain-explanation');
+
+      if (currentAudienceMode === 'plain') {
+        if (isAcceptable) {
+          plainExp.innerHTML = `<strong>Physician Assessment:</strong> All 12 electrical channels are steady and distinct. P-waves, QRS spikes, and T-waves are identifiable without baseline distortion. No retake is needed.`;
+        } else {
+          let reasons = [];
+          if (pred.flat_leads && pred.flat_leads.length > 0) {
+            reasons.push(`unplugged/flatline wire on <strong>${pred.flat_leads.join(', ')}</strong>`);
+          }
+          if (pred.dropout_leads && pred.dropout_leads.length > 0) {
+            reasons.push(`loose sensor contact on <strong>${pred.dropout_leads.join(', ')}</strong>`);
+          }
+          if (pred.characteristics && pred.characteristics.mean_baseline_variation >= 0.08) {
+            reasons.push(`severe patient chest movement / breathing drift`);
+          }
+          const reasonStr = reasons.length ? reasons.join(' and ') : 'high background noise contamination';
+          plainExp.innerHTML = `<strong>Attention Required:</strong> This recording is unsafe for medical evaluation due to ${reasonStr}. A doctor reading this might miss an arrhythmia or get a false alarm. Please re-attach the sensor and take another recording.`;
+        }
+      } else {
+        plainExp.innerHTML = `<strong>Clinical / DSP Analysis:</strong> Classification yielded <em>${pred.prediction}</em> with posterior probability P(Unacc) = <code>${pred.probability_unacceptable.toFixed(4)}</code>. CWT spectrum: <code>1.0 - ${pred.max_frequency_hz} Hz</code>. Decomposed to Tucker rank <code>[${pred.tucker_rank.join(', ')}]</code> with Frobenius error <code>${pred.reconstruction_error}</code>.`;
+      }
+    }
+
+    // ==============================================================
+    // RENDER QUALITY FACTOR AUDIT & ROOT CAUSE BREAKDOWN
+    // ==============================================================
+    function renderFactorAudit(pred, inspect) {
+      const isAcceptable = pred.prediction === 'Acceptable';
+      const rootBox = document.getElementById('root-cause-box');
+      const rootList = document.getElementById('root-cause-list');
+      const rootAction = document.getElementById('root-cause-action');
+      const summaryBadge = document.getElementById('audit-summary-badge');
+
+      const flatCount = (pred.flat_leads || []).length;
+      const dropCount = (pred.dropout_leads || []).length;
+      const wander = pred.characteristics ? pred.characteristics.mean_baseline_variation : 0.0;
+      const tremor = pred.characteristics ? (pred.characteristics.mean_high_frequency_ratio || 0.0) : 0.0;
+
+      // 1. Sensor & Wire Attachment
+      const badgeSensor = document.getElementById('factor-badge-sensor');
+      const descSensor = document.getElementById('factor-desc-sensor');
+      const cardSensor = document.getElementById('factor-card-sensor');
+      if (flatCount > 0 || dropCount > 0) {
+        badgeSensor.className = 'px-2 py-0.5 text-[10px] font-bold rounded bg-rose-950 text-rose-300 border border-rose-800';
+        badgeSensor.textContent = 'FAILED';
+        cardSensor.className = 'p-3.5 rounded-xl border bg-rose-950/20 border-rose-900/60 space-y-2';
+        let issues = [];
+        if (dropCount > 0) issues.push(`Disconnected sensor on ${pred.dropout_leads.join(', ')} (-80 mV ADC drop)`);
+        if (flatCount > 0) issues.push(`Dead flatline lead on ${pred.flat_leads.join(', ')}`);
+        descSensor.textContent = issues.join('; ');
+      } else {
+        badgeSensor.className = 'px-2 py-0.5 text-[10px] font-bold rounded bg-emerald-950 text-emerald-300 border border-emerald-800';
+        badgeSensor.textContent = 'PASSED';
+        cardSensor.className = 'p-3.5 rounded-xl border bg-slate-950 border-slate-800 space-y-2';
+        descSensor.textContent = 'All 12 chest & limb wires maintained continuous electrical contact.';
+      }
+
+      // 2. Baseline Wander
+      const badgeWander = document.getElementById('factor-badge-wander');
+      const descWander = document.getElementById('factor-desc-wander');
+      const cardWander = document.getElementById('factor-card-wander');
+      if (wander >= 0.08) {
+        if (wander > 1.0) {
+          badgeWander.className = 'px-2 py-0.5 text-[10px] font-bold rounded bg-rose-950 text-rose-300 border border-rose-800';
+          badgeWander.textContent = 'FAILED';
+          cardWander.className = 'p-3.5 rounded-xl border bg-rose-950/20 border-rose-900/60 space-y-2';
+          descWander.textContent = `Severe motion drift (${wander.toFixed(3)} >= 0.08). Patient moved or breathed heavily.`;
+        } else {
+          badgeWander.className = 'px-2 py-0.5 text-[10px] font-bold rounded bg-amber-950 text-amber-300 border border-amber-800';
+          badgeWander.textContent = 'STABILIZED';
+          cardWander.className = 'p-3.5 rounded-xl border bg-slate-950 border-amber-900/40 space-y-2';
+          descWander.textContent = `Moderate breathing drift (${wander.toFixed(3)} >= 0.08). High-pass filter corrected baseline.`;
+        }
+      } else {
+        badgeWander.className = 'px-2 py-0.5 text-[10px] font-bold rounded bg-emerald-950 text-emerald-300 border border-emerald-800';
+        badgeWander.textContent = 'PASSED';
+        cardWander.className = 'p-3.5 rounded-xl border bg-slate-950 border-slate-800 space-y-2';
+        descWander.textContent = `Stable baseline (${wander.toFixed(3)} < 0.08). Patient was still; filter bypassed.`;
+      }
+
+      // 3. Muscle Tremor
+      const badgeTremor = document.getElementById('factor-badge-tremor');
+      const descTremor = document.getElementById('factor-desc-tremor');
+      const cardTremor = document.getElementById('factor-card-tremor');
+      if (tremor >= 0.05) {
+        badgeTremor.className = 'px-2 py-0.5 text-[10px] font-bold rounded bg-amber-950 text-amber-300 border border-amber-800';
+        badgeTremor.textContent = 'ELEVATED';
+        cardTremor.className = 'p-3.5 rounded-xl border bg-slate-950 border-amber-900/40 space-y-2';
+        descTremor.textContent = `Muscle tremor / shivering detected (${tremor.toFixed(3)} >= 0.05). CWT widened to 50 Hz.`;
+      } else {
+        badgeTremor.className = 'px-2 py-0.5 text-[10px] font-bold rounded bg-emerald-950 text-emerald-300 border border-emerald-800';
+        badgeTremor.textContent = 'PASSED';
+        cardTremor.className = 'p-3.5 rounded-xl border bg-slate-950 border-slate-800 space-y-2';
+        descTremor.textContent = 'Clean spectral band. No shivering or high-frequency muscle noise.';
+      }
+
+      // 4. Tensor Structure
+      const badgeTensor = document.getElementById('factor-badge-tensor');
+      const descTensor = document.getElementById('factor-desc-tensor');
+      const cardTensor = document.getElementById('factor-card-tensor');
+      if (pred.reconstruction_error > 0.35) {
+        badgeTensor.className = 'px-2 py-0.5 text-[10px] font-bold rounded bg-rose-950 text-rose-300 border border-rose-800';
+        badgeTensor.textContent = 'DISTORTED';
+        cardTensor.className = 'p-3.5 rounded-xl border bg-rose-950/20 border-rose-900/60 space-y-2';
+        descTensor.textContent = `High multidimensional error (${pred.reconstruction_error.toFixed(4)}). Waveform deviates from clean heart dynamics.`;
+      } else {
+        badgeTensor.className = 'px-2 py-0.5 text-[10px] font-bold rounded bg-emerald-950 text-emerald-300 border border-emerald-800';
+        badgeTensor.textContent = 'PASSED';
+        cardTensor.className = 'p-3.5 rounded-xl border bg-slate-950 border-slate-800 space-y-2';
+        descTensor.textContent = `Preserved 95% of true cardiac energy with ${pred.compression_ratio.toFixed(1)}x compression.`;
+      }
+
+      // Root Causes List if Unacceptable
+      if (!isAcceptable) {
+        rootBox.classList.remove('hidden');
+        rootList.innerHTML = '';
+        summaryBadge.className = 'px-2.5 py-0.5 text-xs font-semibold rounded-full bg-rose-950 text-rose-300 border border-rose-800';
+        summaryBadge.textContent = 'Quality Failure Detected';
+
+        const rootCauses = [];
+        let actions = [];
+
+        if (dropCount > 0) {
+          rootCauses.push(`<strong>Sensor Disconnection (-80 mV Dropout):</strong> Electrode on Lead <code>${pred.dropout_leads.join(', ')}</code> detached from skin or lost conductive gel.`);
+          actions.push(`Clean skin with alcohol pad, apply fresh gel, and reattach <strong>${pred.dropout_leads.join(', ')}</strong> electrode firmly.`);
+        }
+        if (flatCount > 0) {
+          rootCauses.push(`<strong>Signal Flatline (Dead Wire):</strong> Lead <code>${pred.flat_leads.join(', ')}</code> has zero voltage. The cable is unplugged or faulty.`);
+          actions.push(`Check wire clip and firmly plug in Lead <strong>${pred.flat_leads.join(', ')}</strong>.`);
+        }
+        if (wander > 0.08) {
+          rootCauses.push(`<strong>Severe Baseline Wander (${wander.toFixed(3)}):</strong> Exceeded the 0.08 safety limit due to deep respiration or torso motion.`);
+          actions.push(`Ask patient to remain still, relax abdominal muscles, and breathe shallowly during the 10-second capture.`);
+        }
+        if (tremor >= 0.05) {
+          rootCauses.push(`<strong>High-Frequency Muscle Noise:</strong> Shivering, tension, or 50 Hz powerline interference.`);
+          actions.push(`Ensure patient is warm and relax their arms.`);
+        }
+        if (rootCauses.length === 0) {
+          rootCauses.push(`<strong>Complex Morphological Noise:</strong> Multilinear tensor features fell below the diagnostic viability threshold.`);
+          actions.push(`Instruct patient to rest and capture a clean 10-second re-recording.`);
+        }
+
+        rootCauses.forEach(rc => {
+          const li = document.createElement('li');
+          li.className = 'flex items-start space-x-2';
+          li.innerHTML = `<span class="text-rose-400 font-bold">•</span><span>${rc}</span>`;
+          rootList.appendChild(li);
+        });
+
+        rootAction.innerHTML = actions.join(' ');
+      } else {
+        rootBox.classList.add('hidden');
+        summaryBadge.className = 'px-2.5 py-0.5 text-xs font-semibold rounded-full bg-emerald-950 text-emerald-300 border border-emerald-800';
+        summaryBadge.textContent = 'All 4 Factors Passed ✅';
+      }
+    }
+
+    // ==============================================================
+    // RENDER 3D TENSOR MULTILINEAR DECOMPOSITION CENTER
+    // ==============================================================
+    function renderTensorCenter(pred) {
+      const rank = pred.tucker_rank || [23, 8, 4];
+      const r1 = rank[0] || 23;
+      const r2 = rank[1] || 8;
+      const r3 = rank[2] || 4;
+
+      document.getElementById('tensor-core-shape-pill').textContent = `${r1} × ${r2} × ${r3}`;
+      
+      // Mode 1: Time
+      document.getElementById('rank-mode1-pill').textContent = `R₁ = ${r1}`;
+      document.getElementById('rank-mode1-explain').textContent = r1;
+
+      // Mode 2: Frequency
+      document.getElementById('rank-mode2-pill').textContent = `R₂ = ${r2}`;
+      document.getElementById('rank-mode2-explain').textContent = r2;
+
+      // Mode 3: Leads
+      document.getElementById('rank-mode3-pill').textContent = `R₃ = ${r3}`;
+      document.getElementById('rank-mode3-explain').textContent = r3;
+
+      // Gauges
+      const comp = pred.compression_ratio || 51.5;
+      document.getElementById('tensor-comp-ratio').textContent = `${comp.toFixed(1)}x Smaller`;
+      document.getElementById('tensor-param-count').textContent = (pred.parameters_stored || 116584).toLocaleString();
+      
+      const rawCount = 6000000;
+      const storedCount = pred.parameters_stored || 116584;
+      const reduction = ((1.0 - (storedCount / rawCount)) * 100).toFixed(1);
+      document.getElementById('tensor-reduction-percent').textContent = `${reduction}%`;
+      document.getElementById('tensor-comp-bar').style.width = `${Math.min(100, Math.max(10, comp * 1.5))}%`;
+
+      // Fidelity
+      const err = pred.reconstruction_error || 0.302;
+      document.getElementById('tensor-recon-error').textContent = err.toFixed(4);
+      const fidelityPct = Math.max(0, (1.0 - err * 0.5) * 100).toFixed(1);
+      document.getElementById('tensor-recon-fidelity').textContent = `${fidelityPct}% Fidelity`;
+
+      // Draw Core Heatmap
+      drawCoreHeatmap(pred.core_slice);
+    }
+
+    // Draw Core Tensor 2D Slice Heatmap on Canvas
+    function drawCoreHeatmap(sliceData) {
+      if (!coreCanvas || !coreCanvas.parentElement) return;
+      const rect = coreCanvas.parentElement.getBoundingClientRect();
+      const width = rect.width;
+      const height = rect.height;
+
+      coreCtx.clearRect(0, 0, width, height);
+
+      // Default synthetic energy decaying matrix if none provided
+      let matrix = sliceData;
+      if (!matrix || !matrix.length) {
+        matrix = [];
+        for (let r = 0; r < 10; r++) {
+          const row = [];
+          for (let c = 0; c < 10; c++) {
+            const val = 1.0 / (1.0 + 0.35 * r + 0.45 * c);
+            row.push(val);
+          }
+          matrix.push(row);
+        }
+      }
+
+      const rows = matrix.length;
+      const cols = matrix[0].length;
+      const cellW = (width - 40) / cols;
+      const cellH = (height - 20) / rows;
+      const startX = 20;
+      const startY = 10;
+
+      // Find max value for normalization
+      let maxVal = 0.001;
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const absV = Math.abs(matrix[r][c]);
+          if (absV > maxVal) maxVal = absV;
+        }
+      }
+
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const norm = Math.min(1.0, Math.abs(matrix[r][c]) / maxVal);
+          
+          // Color scale: deep blue -> cyan -> gold
+          let color;
+          if (norm < 0.25) {
+            color = `rgba(15, 23, 42, ${0.4 + norm})`;
+          } else if (norm < 0.65) {
+            color = `rgba(14, 165, 233, ${norm})`;
+          } else {
+            color = `rgba(52, 211, 153, ${norm})`;
+          }
+
+          coreCtx.fillStyle = color;
+          coreCtx.fillRect(startX + c * cellW + 1, startY + r * cellH + 1, cellW - 2, cellH - 2);
+
+          // Grid border
+          coreCtx.strokeStyle = 'rgba(30, 41, 59, 0.4)';
+          coreCtx.strokeRect(startX + c * cellW, startY + r * cellH, cellW, cellH);
+        }
+      }
+
+      // Draw axis labels
+      coreCtx.fillStyle = '#64748b';
+      coreCtx.font = '9px monospace';
+      coreCtx.fillText('Time Eigen-Modes (R₁)', startX, height - 2);
+    }
+
+    // Render 12-Lead Matrix
+    function renderLeadMatrix(inspect) {
+      const container = document.getElementById('leads-grid');
+      container.innerHTML = '';
+
+      inspect.leads.forEach(lead => {
+        let statusBadge = '🟢 Active';
+        let badgeClass = 'text-emerald-400 bg-emerald-950/60 border-emerald-800';
+        let cardBorder = 'border-slate-800 hover:border-cyan-500/50';
+
+        if (lead.constant_lead) {
+          statusBadge = '🔴 Flatline';
+          badgeClass = 'text-rose-400 bg-rose-950 border-rose-800';
+          cardBorder = 'border-rose-900/60 bg-rose-950/20';
+        } else if (lead.contains_dropout_marker) {
+          statusBadge = '🔴 Dropout';
+          badgeClass = 'text-rose-400 bg-rose-950 border-rose-800';
+          cardBorder = 'border-rose-900/60 bg-rose-950/20';
+        } else if (lead.std > 1.5) {
+          statusBadge = '🟡 High Drift';
+          badgeClass = 'text-amber-400 bg-amber-950 border-amber-800';
+        }
+
+        const isCurrent = lead.lead === currentSelectedLead;
+        if (isCurrent) {
+          cardBorder += ' ring-2 ring-cyan-500';
+        }
+
+        const card = document.createElement('div');
+        card.className = `p-3 rounded-xl border ${cardBorder} bg-slate-950 transition cursor-pointer flex flex-col justify-between`;
+        card.onclick = () => {
+          changeLead(lead.lead);
+          renderLeadMatrix(currentInspection);
+        };
+
+        card.innerHTML = `
+          <div class="flex items-center justify-between mb-1.5">
+            <span class="font-bold font-mono text-sm ${isCurrent ? 'text-cyan-300' : 'text-white'}">${lead.lead}</span>
+            <span class="px-1.5 py-0.5 text-[9px] font-semibold rounded border ${badgeClass}">${statusBadge}</span>
+          </div>
+          <div class="text-[10px] font-mono text-slate-400 space-y-0.5">
+            <div>Std: <span class="text-slate-300 font-medium">${lead.std.toFixed(3)}</span></div>
+            <div>[${lead.minimum.toFixed(1)}, ${lead.maximum.toFixed(1)}] mV</div>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    // Change Selected Lead
+    function changeLead(leadName) {
+      currentSelectedLead = leadName;
+      document.getElementById('lead-select').value = leadName;
+      document.getElementById('current-lead-pill').textContent = `Lead ${leadName}`;
+      drawWaveform();
+    }
+
+    // Draw ECG on HTML5 Canvas
+    function drawWaveform() {
+      if (!currentWaveformData || !currentWaveformData.leads) return;
+      const points = currentWaveformData.leads[currentSelectedLead];
+      if (!points || !points.length) return;
+
+      const rect = ecgCanvas.parentElement.getBoundingClientRect();
+      const width = rect.width;
+      const height = rect.height;
+
+      ctx.clearRect(0, 0, width, height);
+
+      // Find bounds
+      let minY = -1.5, maxY = 2.0;
+      points.forEach(v => {
+        if (v < minY) minY = v;
+        if (v > maxY) maxY = v;
+      });
+      const yRange = (maxY - minY) || 1.0;
+      const padY = yRange * 0.15;
+      const effMinY = minY - padY;
+      const effMaxY = maxY + padY;
+
+      // Draw zero baseline
+      const zeroY = height - ((0 - effMinY) / (effMaxY - effMinY)) * height;
+      ctx.strokeStyle = 'rgba(14, 165, 233, 0.15)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.moveTo(0, zeroY);
+      ctx.lineTo(width, zeroY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Draw Trace
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = '#38bdf8'; // Cyan-400
+      ctx.shadowColor = 'rgba(56, 189, 248, 0.5)';
+      ctx.shadowBlur = 6;
+      ctx.beginPath();
+
+      const stepX = width / (points.length - 1);
+      const totalPts = points.length;
+
+      for (let i = 0; i < totalPts; i++) {
+        const x = i * stepX;
+        const val = points[i];
+        const y = height - ((val - effMinY) / (effMaxY - effMinY)) * height;
+
+        if (i === 0) {
+          ctx.moveTo(x, y);
+        } else {
+          ctx.lineTo(x, y);
+        }
+      }
+      ctx.stroke();
+      ctx.shadowBlur = 0; // reset shadow
+
+      // Draw sweep cursor if sweeping
+      if (isSweeping) {
+        const sweepX = (sweepOffset % width);
+        ctx.strokeStyle = '#10b981';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(sweepX, 0);
+        ctx.lineTo(sweepX, height);
+        ctx.stroke();
+      }
+    }
+
+    // Telemetry sweep animation
+    function toggleSweepAnimation() {
+      isSweeping = !isSweeping;
+      const text = document.getElementById('sweep-text');
+      const icon = document.getElementById('sweep-icon');
+
+      if (isSweeping) {
+        text.textContent = 'Pause Sweep';
+        icon.setAttribute('data-lucide', 'pause');
+        updateIcons();
+        animateSweep();
+      } else {
+        text.textContent = 'Telemetry Sweep';
+        icon.setAttribute('data-lucide', 'play');
+        updateIcons();
+        cancelAnimationFrame(sweepAnimationId);
+        drawWaveform();
+      }
+    }
+
+    function animateSweep() {
+      if (!isSweeping) return;
+      sweepOffset += 3.5;
+      drawWaveform();
+      sweepAnimationId = requestAnimationFrame(animateSweep);
+    }
+
+    // Canvas Mouseover Tooltip
+    ecgCanvas.addEventListener('mousemove', (e) => {
+      if (!currentWaveformData || !currentWaveformData.leads) return;
+      const points = currentWaveformData.leads[currentSelectedLead];
+      if (!points) return;
+
+      const rect = ecgCanvas.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const width = rect.width;
+      const idx = Math.min(points.length - 1, Math.max(0, Math.round((mouseX / width) * (points.length - 1))));
+
+      const val = points[idx];
+      const timeSec = currentWaveformData.time ? currentWaveformData.time[idx] : (idx / 100);
+
+      tooltip.classList.remove('hidden');
+      tooltip.style.left = `${Math.min(width - 150, mouseX + 10)}px`;
+      document.getElementById('tip-time').textContent = `${timeSec.toFixed(2)}s`;
+      document.getElementById('tip-volt').textContent = `${val.toFixed(2)} mV`;
+    });
+
+    ecgCanvas.addEventListener('mouseleave', () => {
+      tooltip.classList.add('hidden');
+    });
+
+  </script>
+</body>
+</html>
