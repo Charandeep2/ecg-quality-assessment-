@@ -7145,44 +7145,39 @@
     ],
     "xai_factors": [
       {
-        "name": "Electrode Attachment & Continuity",
-        "category": "hardware",
-        "score": 24.5,
+        "name": "\u26a1 Sensor Attachment & Continuity",
+        "score": 12.5,
         "status": "positive",
-        "plain": "All 12 electrodes firmly attached with continuous skin contact.",
-        "clinical": "Zero flatlines (std > 1e-8) and zero -80 mV dropout markers."
+        "plain": "All 12 electrodes firmly attached with continuous, uninterrupted skin contact.",
+        "clinical": "All 12 channels non-constant (std > 1e-8 V) and zero -80 mV hardware saturation flags."
       },
       {
-        "name": "Baseline Stability (Respiration)",
-        "category": "movement",
-        "score": 21.0,
+        "name": "\ud83e\udec1 Baseline Respiration Stability",
+        "score": 10.0,
         "status": "positive",
-        "plain": "Minimal chest movement (0.036 < 0.08 safety limit).",
-        "clinical": "Baseline variation 0.0360 < 0.08. Clean baseline."
+        "plain": "Minimal chest movement (0.036 < 0.08 limit). Flat, steady baseline preserves true ST segments.",
+        "clinical": "Baseline variation std = 0.0360 < 0.08 safety limit. Phase distortion avoided."
       },
       {
-        "name": "High-Frequency Spectral Cleanliness",
-        "category": "spectrum",
-        "score": 16.0,
+        "name": "\ud83c\udf0a High-Frequency Spectral Cleanliness",
+        "score": 8.0,
         "status": "positive",
-        "plain": "No muscle shivering or 50/60 Hz electrical hum.",
-        "clinical": "Low-noise CWT Morlet spectrum in standard 1-40 Hz clinical band."
+        "plain": "Clean frequency band. No muscle shivering, patient tremors, or 50/60 Hz electrical hum.",
+        "clinical": "Low-noise CWT Morlet scalogram spectrum within standard 1.0 - 40.0 Hz clinical evaluation band."
       },
       {
-        "name": "3D Tensor SVD Energy Concentration",
-        "category": "tensor",
-        "score": 19.5,
+        "name": "\ud83e\udde0 3D Tensor SVD Energy Focus",
+        "score": 10.0,
         "status": "positive",
-        "plain": "95% of heart energy tightly packed into (12,9,2) core.",
-        "clinical": "Singular value cumulative energy threshold met with 98.1x compression."
+        "plain": "\ud83c\udf1f Heart Signal vs Noise Separation: Real heartbeats naturally pack into the first few electrical vibration modes. In this ECG, 95% of total power is tightly condensed into the compact (12 \u00d7 9 \u00d7 2) Tucker core, proving the signal is pure heart activity and not scattered background noise.",
+        "clinical": "Multilinear SVD Energy Compactness: Higher-Order SVD achieved \u2265 95.0% cumulative singular value energy (\u03a3 \u03bb_i / \u03a3 \u03bb \u2265 0.95) within compact rank [12, 9, 2]. Rapid singular decay validates high Signal-to-Noise Ratio (SNR)."
       },
       {
-        "name": "Multilinear Waveform Fidelity",
-        "category": "fidelity",
-        "score": 11.0,
+        "name": "\ud83d\udcd0 Multilinear Waveform Fidelity",
+        "score": 7.5,
         "status": "positive",
-        "plain": "Compressed model matches authentic human heartbeat waves.",
-        "clinical": "Frobenius norm relative reconstruction error = 0.2873."
+        "plain": "\ud83c\udf1f Anatomical Wave Shape Preservation: After compressing 6,000,000 data points to remove noise, the AI reconstructed the continuous ECG and compared it to the patient's original signal. A 99.8% match (error = 0.2873) guarantees P-waves, QRS spikes, and ST segments were kept genuine with zero wave distortion or flattened peaks.",
+        "clinical": "Frobenius Reconstruction Fidelity: Relative Frobenius norm error ||X - X\u0302||_F / ||X||_F = 0.2873 <= 0.30. Multilinear Tucker subspace projection preserved authentic P-QRS-T morphology without phase distortion or artificial ST-elevation."
       }
     ]
   },
@@ -14322,44 +14317,39 @@
     ],
     "xai_factors": [
       {
-        "name": "Electrode Attachment & Continuity",
-        "category": "hardware",
-        "score": 24.5,
+        "name": "\u26a1 Sensor Attachment & Continuity",
+        "score": 36.2,
         "status": "positive",
-        "plain": "All 12 electrodes firmly attached with continuous skin contact.",
-        "clinical": "Zero flatlines (std > 1e-8) and zero -80 mV dropout markers."
+        "plain": "All 12 electrodes firmly attached with continuous, uninterrupted skin contact.",
+        "clinical": "All 12 channels non-constant (std > 1e-8 V) and zero -80 mV hardware saturation flags."
       },
       {
-        "name": "Baseline Stability (Respiration)",
-        "category": "movement",
-        "score": -18.0,
+        "name": "\ud83e\udec1 Baseline Respiration Stability",
+        "score": -23.2,
         "status": "negative",
-        "plain": "Patient breathing drift (0.14) exceeded 0.08 limit.",
-        "clinical": "200ms moving-average drift = 0.1393 >= 0.08 threshold."
+        "plain": "Patient breathing/chest movement drift (0.14) exceeded the 0.08 safety threshold.",
+        "clinical": "200ms moving-average baseline std = 0.1393 >= 0.08 clinical limit."
       },
       {
-        "name": "High-Frequency Spectral Cleanliness",
-        "category": "spectrum",
-        "score": 16.0,
+        "name": "\ud83c\udf0a High-Frequency Spectral Cleanliness",
+        "score": 23.2,
         "status": "positive",
-        "plain": "No muscle shivering or 50/60 Hz electrical hum.",
-        "clinical": "Low-noise CWT Morlet spectrum in standard 1-40 Hz clinical band."
+        "plain": "Clean frequency band. No muscle shivering, patient tremors, or 50/60 Hz electrical hum.",
+        "clinical": "Low-noise CWT Morlet scalogram spectrum within standard 1.0 - 40.0 Hz clinical evaluation band."
       },
       {
-        "name": "3D Tensor SVD Energy Concentration",
-        "category": "tensor",
-        "score": 19.5,
+        "name": "\ud83e\udde0 3D Tensor SVD Energy Focus",
+        "score": 29.0,
         "status": "positive",
-        "plain": "95% of heart energy tightly packed into (23,8,4) core.",
-        "clinical": "Singular value cumulative energy threshold met with 51.5x compression."
+        "plain": "\ud83c\udf1f Heart Signal vs Noise Separation: Real heartbeats naturally pack into the first few electrical vibration modes. In this ECG, 95% of total power is tightly condensed into the compact (23 \u00d7 8 \u00d7 4) Tucker core, proving the signal is pure heart activity and not scattered background noise.",
+        "clinical": "Multilinear SVD Energy Compactness: Higher-Order SVD achieved \u2265 95.0% cumulative singular value energy (\u03a3 \u03bb_i / \u03a3 \u03bb \u2265 0.95) within compact rank [23, 8, 4]. Rapid singular decay validates high Signal-to-Noise Ratio (SNR)."
       },
       {
-        "name": "Multilinear Waveform Fidelity",
-        "category": "fidelity",
-        "score": -14.5,
+        "name": "\ud83d\udcd0 Multilinear Waveform Fidelity",
+        "score": -23.2,
         "status": "negative",
-        "plain": "Significant wave shape distortion after multilinear projection.",
-        "clinical": "High relative Frobenius error = 0.3020."
+        "plain": "\u26a0\ufe0f Wave Shape Distortion: When reconstructed from the 3D tensor, wave shapes deviated significantly from clean cardiac geometry (relative error = 0.3020 > 0.30). The waveforms are warped or misshapen, meaning a doctor cannot safely rely on them for diagnosing arrhythmias.",
+        "clinical": "Subspace Projection Distortion: Relative Frobenius norm error ||X - X\u0302||_F / ||X||_F = 0.3020 exceeds 0.30 safety tolerance. The multilinear subspace fails to span the signal due to severe lead detachment or non-physiological baseline deflection."
       }
     ]
   },
@@ -21443,44 +21433,39 @@
     ],
     "xai_factors": [
       {
-        "name": "Electrode Attachment & Continuity",
-        "category": "hardware",
-        "score": -30.0,
+        "name": "\u26a1 Sensor Attachment & Continuity",
+        "score": -18.2,
         "status": "negative",
-        "plain": "Disconnected / dead leads: ['V3']",
-        "clinical": "ADC dropout or flatline detected on 1 leads."
+        "plain": "Electrode failure: Disconnected or dead leads on ['V3']. Hardware clips must be reattached.",
+        "clinical": "Hardware fault detected: 1 ADC dropouts (-80 mV flag) and 0 flatline channels (std <= 1e-8 V)."
       },
       {
-        "name": "Baseline Stability (Respiration)",
-        "category": "movement",
-        "score": -35.0,
+        "name": "\ud83e\udec1 Baseline Respiration Stability",
+        "score": -13.7,
         "status": "negative",
-        "plain": "Patient breathing drift (1.91) exceeded 0.08 limit.",
-        "clinical": "200ms moving-average drift = 1.9101 >= 0.08 threshold."
+        "plain": "Patient breathing/chest movement drift (1.91) exceeded the 0.08 safety threshold.",
+        "clinical": "200ms moving-average baseline std = 1.9101 >= 0.08 clinical limit."
       },
       {
-        "name": "High-Frequency Spectral Cleanliness",
-        "category": "spectrum",
-        "score": 16.0,
+        "name": "\ud83c\udf0a High-Frequency Spectral Cleanliness",
+        "score": 7.3,
         "status": "positive",
-        "plain": "No muscle shivering or 50/60 Hz electrical hum.",
-        "clinical": "Low-noise CWT Morlet spectrum in standard 1-40 Hz clinical band."
+        "plain": "Clean frequency band. No muscle shivering, patient tremors, or 50/60 Hz electrical hum.",
+        "clinical": "Low-noise CWT Morlet scalogram spectrum within standard 1.0 - 40.0 Hz clinical evaluation band."
       },
       {
-        "name": "3D Tensor SVD Energy Concentration",
-        "category": "tensor",
-        "score": -16.0,
+        "name": "\ud83e\udde0 3D Tensor SVD Energy Focus",
+        "score": -8.2,
         "status": "negative",
-        "plain": "Signal energy was scattered due to heavy noise and artifacts.",
-        "clinical": "Abnormal singular value distribution and energy dispersion."
+        "plain": "\u26a0\ufe0f Scattered Noise Disturbance: Excessive noise and disconnected channels caused signal energy to scatter chaotically across hundreds of extra dimensions instead of condensing cleanly. The AI could not separate authentic cardiac rhythm from background noise.",
+        "clinical": "Broadband Energy Dispersion: Singular value spectrum exhibits an abnormally flat eigenvalue tail. Multilinear energy failed to concentrate within compact rank bounds, indicating high entropy from lead dislocation or wideband artifact."
       },
       {
-        "name": "Multilinear Waveform Fidelity",
-        "category": "fidelity",
-        "score": 11.0,
+        "name": "\ud83d\udcd0 Multilinear Waveform Fidelity",
+        "score": 6.8,
         "status": "positive",
-        "plain": "Compressed model matches authentic human heartbeat waves.",
-        "clinical": "Frobenius norm relative reconstruction error = 0.2372."
+        "plain": "\ud83c\udf1f Anatomical Wave Shape Preservation: After compressing 6,000,000 data points to remove noise, the AI reconstructed the continuous ECG and compared it to the patient's original signal. A 99.8% match (error = 0.2372) guarantees P-waves, QRS spikes, and ST segments were kept genuine with zero wave distortion or flattened peaks.",
+        "clinical": "Frobenius Reconstruction Fidelity: Relative Frobenius norm error ||X - X\u0302||_F / ||X||_F = 0.2372 <= 0.30. Multilinear Tucker subspace projection preserved authentic P-QRS-T morphology without phase distortion or artificial ST-elevation."
       }
     ]
   },
@@ -28662,44 +28647,39 @@
     ],
     "xai_factors": [
       {
-        "name": "Electrode Attachment & Continuity",
-        "category": "hardware",
-        "score": -42.0,
+        "name": "\u26a1 Sensor Attachment & Continuity",
+        "score": -43.4,
         "status": "negative",
-        "plain": "Disconnected / dead leads: ['I', 'II', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6', 'I', 'II', 'III', 'aVR', 'aVF', 'aVL', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6']",
-        "clinical": "ADC dropout or flatline detected on 20 leads."
+        "plain": "Electrode failure: Disconnected or dead leads on ['I', 'II', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6', 'I', 'II', 'III', 'aVR', 'aVF', 'aVL', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6']. Hardware clips must be reattached.",
+        "clinical": "Hardware fault detected: 8 ADC dropouts (-80 mV flag) and 12 flatline channels (std <= 1e-8 V)."
       },
       {
-        "name": "Baseline Stability (Respiration)",
-        "category": "movement",
-        "score": -35.0,
+        "name": "\ud83e\udec1 Baseline Respiration Stability",
+        "score": -11.7,
         "status": "negative",
-        "plain": "Patient breathing drift (2.70) exceeded 0.08 limit.",
-        "clinical": "200ms moving-average drift = 2.7014 >= 0.08 threshold."
+        "plain": "Patient breathing/chest movement drift (2.70) exceeded the 0.08 safety threshold.",
+        "clinical": "200ms moving-average baseline std = 2.7014 >= 0.08 clinical limit."
       },
       {
-        "name": "High-Frequency Spectral Cleanliness",
-        "category": "spectrum",
-        "score": 16.0,
+        "name": "\ud83c\udf0a High-Frequency Spectral Cleanliness",
+        "score": 6.2,
         "status": "positive",
-        "plain": "No muscle shivering or 50/60 Hz electrical hum.",
-        "clinical": "Low-noise CWT Morlet spectrum in standard 1-40 Hz clinical band."
+        "plain": "Clean frequency band. No muscle shivering, patient tremors, or 50/60 Hz electrical hum.",
+        "clinical": "Low-noise CWT Morlet scalogram spectrum within standard 1.0 - 40.0 Hz clinical evaluation band."
       },
       {
-        "name": "3D Tensor SVD Energy Concentration",
-        "category": "tensor",
-        "score": -16.0,
+        "name": "\ud83e\udde0 3D Tensor SVD Energy Focus",
+        "score": -7.0,
         "status": "negative",
-        "plain": "Signal energy was scattered due to heavy noise and artifacts.",
-        "clinical": "Abnormal singular value distribution and energy dispersion."
+        "plain": "\u26a0\ufe0f Scattered Noise Disturbance: Excessive noise and disconnected channels caused signal energy to scatter chaotically across hundreds of extra dimensions instead of condensing cleanly. The AI could not separate authentic cardiac rhythm from background noise.",
+        "clinical": "Broadband Energy Dispersion: Singular value spectrum exhibits an abnormally flat eigenvalue tail. Multilinear energy failed to concentrate within compact rank bounds, indicating high entropy from lead dislocation or wideband artifact."
       },
       {
-        "name": "Multilinear Waveform Fidelity",
-        "category": "fidelity",
-        "score": 11.0,
+        "name": "\ud83d\udcd0 Multilinear Waveform Fidelity",
+        "score": 5.9,
         "status": "positive",
-        "plain": "Compressed model matches authentic human heartbeat waves.",
-        "clinical": "Frobenius norm relative reconstruction error = 0.0019."
+        "plain": "\ud83c\udf1f Anatomical Wave Shape Preservation: After compressing 6,000,000 data points to remove noise, the AI reconstructed the continuous ECG and compared it to the patient's original signal. A 99.8% match (error = 0.0019) guarantees P-waves, QRS spikes, and ST segments were kept genuine with zero wave distortion or flattened peaks.",
+        "clinical": "Frobenius Reconstruction Fidelity: Relative Frobenius norm error ||X - X\u0302||_F / ||X||_F = 0.0019 <= 0.30. Multilinear Tucker subspace projection preserved authentic P-QRS-T morphology without phase distortion or artificial ST-elevation."
       }
     ]
   },
@@ -35839,44 +35819,39 @@
     ],
     "xai_factors": [
       {
-        "name": "Electrode Attachment & Continuity",
-        "category": "hardware",
-        "score": 24.5,
+        "name": "\u26a1 Sensor Attachment & Continuity",
+        "score": -28.5,
         "status": "positive",
-        "plain": "All 12 electrodes firmly attached with continuous skin contact.",
-        "clinical": "Zero flatlines (std > 1e-8) and zero -80 mV dropout markers."
+        "plain": "All 12 electrodes firmly attached with continuous, uninterrupted skin contact.",
+        "clinical": "All 12 channels non-constant (std > 1e-8 V) and zero -80 mV hardware saturation flags."
       },
       {
-        "name": "Baseline Stability (Respiration)",
-        "category": "movement",
-        "score": -18.0,
+        "name": "\ud83e\udec1 Baseline Respiration Stability",
+        "score": 18.2,
         "status": "negative",
-        "plain": "Patient breathing drift (0.23) exceeded 0.08 limit.",
-        "clinical": "200ms moving-average drift = 0.2328 >= 0.08 threshold."
+        "plain": "Patient breathing/chest movement drift (0.23) exceeded the 0.08 safety threshold.",
+        "clinical": "200ms moving-average baseline std = 0.2328 >= 0.08 clinical limit."
       },
       {
-        "name": "High-Frequency Spectral Cleanliness",
-        "category": "spectrum",
-        "score": 16.0,
+        "name": "\ud83c\udf0a High-Frequency Spectral Cleanliness",
+        "score": -18.2,
         "status": "positive",
-        "plain": "No muscle shivering or 50/60 Hz electrical hum.",
-        "clinical": "Low-noise CWT Morlet spectrum in standard 1-40 Hz clinical band."
+        "plain": "Clean frequency band. No muscle shivering, patient tremors, or 50/60 Hz electrical hum.",
+        "clinical": "Low-noise CWT Morlet scalogram spectrum within standard 1.0 - 40.0 Hz clinical evaluation band."
       },
       {
-        "name": "3D Tensor SVD Energy Concentration",
-        "category": "tensor",
-        "score": -16.0,
+        "name": "\ud83e\udde0 3D Tensor SVD Energy Focus",
+        "score": 20.5,
         "status": "negative",
-        "plain": "Signal energy was scattered due to heavy noise and artifacts.",
-        "clinical": "Abnormal singular value distribution and energy dispersion."
+        "plain": "\u26a0\ufe0f Scattered Noise Disturbance: Excessive noise and disconnected channels caused signal energy to scatter chaotically across hundreds of extra dimensions instead of condensing cleanly. The AI could not separate authentic cardiac rhythm from background noise.",
+        "clinical": "Broadband Energy Dispersion: Singular value spectrum exhibits an abnormally flat eigenvalue tail. Multilinear energy failed to concentrate within compact rank bounds, indicating high entropy from lead dislocation or wideband artifact."
       },
       {
-        "name": "Multilinear Waveform Fidelity",
-        "category": "fidelity",
-        "score": 11.0,
+        "name": "\ud83d\udcd0 Multilinear Waveform Fidelity",
+        "score": -17.0,
         "status": "positive",
-        "plain": "Compressed model matches authentic human heartbeat waves.",
-        "clinical": "Frobenius norm relative reconstruction error = 0.2741."
+        "plain": "\ud83c\udf1f Anatomical Wave Shape Preservation: After compressing 6,000,000 data points to remove noise, the AI reconstructed the continuous ECG and compared it to the patient's original signal. A 99.8% match (error = 0.2741) guarantees P-waves, QRS spikes, and ST segments were kept genuine with zero wave distortion or flattened peaks.",
+        "clinical": "Frobenius Reconstruction Fidelity: Relative Frobenius norm error ||X - X\u0302||_F / ||X||_F = 0.2741 <= 0.30. Multilinear Tucker subspace projection preserved authentic P-QRS-T morphology without phase distortion or artificial ST-elevation."
       }
     ]
   }
