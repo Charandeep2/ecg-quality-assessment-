@@ -56,6 +56,7 @@ class PredictionResponse(BaseModel):
     flat_leads: List[str]
     dropout_leads: List[str]
     core_slice: Optional[List[List[float]]] = None
+    xai_factors: Optional[List[Dict[str, Any]]] = None
 
 
 class InspectionResponse(BaseModel):
